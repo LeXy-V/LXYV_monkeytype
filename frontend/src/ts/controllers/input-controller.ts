@@ -28,6 +28,7 @@ import * as CompositionState from "../states/composition";
 import * as TestInput from "../test/test-input";
 import * as TestWords from "../test/test-words";
 import * as Hangul from "hangul-js";
+import * as CustomTextState from "../states/custom-text-name";
 import { navigate } from "../observables/navigate-event";
 
 let dontInsertSpace = false;
@@ -123,6 +124,7 @@ function backspaceToPrevious(): void {
   TestInput.corrected.popHistory();
   if (Config.funbox === "nospace" || Config.funbox === "arrows") {
     TestInput.input.current = TestInput.input.current.slice(0, -1);
+    setWordsInput(" " + TestInput.input.current + " ");
   }
   TestWords.words.decreaseCurrentIndex();
   TestUI.setCurrentWordElementIndex(TestUI.currentWordElementIndex - 1);
@@ -294,7 +296,7 @@ function handleSpace(): void {
       nextTop = 0;
     }
 
-    if (nextTop > currentTop && !TestUI.lineTransition) {
+    if (nextTop > currentTop) {
       TestUI.lineJump(currentTop);
     }
   } //end of line wrap
@@ -490,8 +492,9 @@ function handleChar(
   // If a trailing composed char is used, ignore it when counting accuracy
   if (
     !thisCharCorrect &&
-    Misc.trailingComposeChars.test(resultingWord) &&
-    CompositionState.getComposing()
+    // Misc.trailingComposeChars.test(resultingWord) &&
+    CompositionState.getComposing() &&
+    !Config.language.startsWith("korean")
   ) {
     TestInput.input.current = resultingWord;
     TestUI.updateWordElement();
@@ -876,6 +879,13 @@ $(document).keydown(async (event) => {
       event.shiftKey &&
       ((Config.mode == "time" && Config.time === 0) ||
         (Config.mode == "words" && Config.words === 0))
+    ) {
+      TestInput.setBailout(true);
+      TestLogic.finish();
+    } else if (
+      event.shiftKey &&
+      Config.mode == "custom" &&
+      CustomTextState.isCustomTextLong() === true
     ) {
       TestInput.setBailout(true);
       TestLogic.finish();

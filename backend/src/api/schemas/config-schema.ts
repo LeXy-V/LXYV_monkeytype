@@ -77,11 +77,13 @@ const CONFIG_SCHEMA = joi.object({
   playSoundOnError: joi.boolean(),
   playSoundOnClick: joi
     .string()
-    .valid("off", ..._.range(1, 11).map(_.toString)),
+    .valid("off", ..._.range(1, 12).map(_.toString)),
   soundVolume: joi.string().valid("0.1", "0.5", "1.0"),
   startGraphsAtZero: joi.boolean(),
   showOutOfFocusWarning: joi.boolean(),
-  paceCaret: joi.string().valid("off", "average", "pb", "last", "custom"),
+  paceCaret: joi
+    .string()
+    .valid("off", "average", "pb", "last", "daily", "custom"),
   paceCaretCustomSpeed: joi.number().min(0),
   repeatedPace: joi.boolean(),
   pageWidth: joi.string().valid("100", "125", "150", "200", "max"),

@@ -108,7 +108,7 @@ declare namespace MonkeyTypes {
 
   type SoundVolume = "0.1" | "0.5" | "1.0";
 
-  type PaceCaret = "off" | "average" | "pb" | "last" | "custom";
+  type PaceCaret = "off" | "average" | "pb" | "last" | "custom" | "daily";
 
   type PageWidth = "100" | "125" | "150" | "200" | "max";
 
@@ -534,6 +534,10 @@ declare namespace MonkeyTypes {
   interface ResultFilters {
     _id: string;
     name: string;
+    pb: {
+      no: boolean;
+      yes: boolean;
+    };
     difficulty: {
       normal: boolean;
       expert: boolean;
@@ -605,7 +609,7 @@ declare namespace MonkeyTypes {
   }
 
   interface Global {
-    snapshot(): Snapshot;
+    snapshot(): Snapshot | undefined;
     config: Config;
     toggleFilterDebug(): void;
     glarsesMode(): void;

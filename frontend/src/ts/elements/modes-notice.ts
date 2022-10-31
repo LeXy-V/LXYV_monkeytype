@@ -6,6 +6,7 @@ import Config from "../config";
 import * as TestWords from "../test/test-words";
 import * as ConfigEvent from "../observables/config-event";
 import { Auth } from "../firebase";
+import * as CustomTextState from "../states/custom-text-name";
 
 ConfigEvent.subscribe((eventKey) => {
   if (
@@ -55,6 +56,14 @@ export async function update(): Promise<void> {
         `<div class="textButton noInteraction"><i class="fas fa-long-arrow-alt-right"></i>shift + tab to restart</div>`
       );
     }
+  }
+
+  const customTextName = CustomTextState.getCustomTextName();
+  const isLong = CustomTextState.isCustomTextLong();
+  if (Config.mode === "custom" && customTextName !== "" && isLong) {
+    $(".pageTest #testModesNotice").append(
+      `<div class="textButton noInteraction"><i class="fas fa-book"></i>${customTextName} (shift + enter to save progress)</div>`
+    );
   }
 
   if (TestState.activeChallenge) {
@@ -116,6 +125,8 @@ export async function update(): Promise<void> {
           ? "pb"
           : Config.paceCaret === "last"
           ? "last"
+          : Config.paceCaret === "daily"
+          ? "daily"
           : "custom"
       } pace${speed}</div>`
     );
@@ -130,7 +141,7 @@ export async function update(): Promise<void> {
       avgAcc = Math.round(avgAcc);
     }
 
-    if (Auth.currentUser && avgWPM > 0) {
+    if (Auth?.currentUser && avgWPM > 0) {
       const avgWPMText = ["wpm", "both"].includes(Config.showAverage)
         ? Config.alwaysShowCPM
           ? `${Math.round(avgWPM * 5)} cpm`
@@ -214,7 +225,7 @@ export async function update(): Promise<void> {
 
   let tagsString = "";
   try {
-    DB.getSnapshot().tags?.forEach((tag) => {
+    DB.getSnapshot()?.tags?.forEach((tag) => {
       if (tag.active === true) {
         tagsString += tag.display + ", ";
       }

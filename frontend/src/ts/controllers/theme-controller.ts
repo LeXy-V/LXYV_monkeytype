@@ -206,7 +206,16 @@ export function clearPreview(applyTheme = true): void {
 let themesList: string[] = [];
 
 async function changeThemeList(): Promise<void> {
-  const themes = await Misc.getThemesList();
+  let themes;
+  try {
+    themes = await Misc.getThemesList();
+  } catch (e) {
+    console.error(
+      Misc.createErrorMessage(e, "Failed to update random theme list")
+    );
+    return;
+  }
+
   if (Config.randomTheme === "fav" && Config.favThemes.length > 0) {
     themesList = Config.favThemes;
   } else if (Config.randomTheme === "light") {
@@ -222,7 +231,7 @@ async function changeThemeList(): Promise<void> {
       return t.name;
     });
   } else if (Config.randomTheme === "custom" && DB.getSnapshot()) {
-    themesList = DB.getSnapshot().customThemes.map((ct) => ct._id);
+    themesList = DB.getSnapshot()?.customThemes.map((ct) => ct._id) ?? [];
   }
   Misc.shuffle(themesList);
   randomThemeIndex = 0;
@@ -247,7 +256,7 @@ export async function randomizeTheme(): Promise<void> {
     let name = randomTheme.replace(/_/g, " ");
     if (Config.randomTheme === "custom") {
       name = (
-        DB.getSnapshot().customThemes.find((ct) => ct._id === randomTheme)
+        DB.getSnapshot()?.customThemes.find((ct) => ct._id === randomTheme)
           ?.name ?? "custom"
       ).replace(/_/g, " ");
     }
@@ -291,7 +300,9 @@ export function applyCustomBackground(): void {
   } else {
     $("#words").addClass("noErrorBorder");
     $("#resultWordsHistory").addClass("noErrorBorder");
-    $(".customBackground").html(`<img src="${Config.customBackground}" />`);
+    $(".customBackground").html(
+      `<img src="${Config.customBackground}" alt="" />`
+    );
     BackgroundFilter.apply();
     applyCustomBackgroundSize();
   }

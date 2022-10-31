@@ -12,6 +12,8 @@ import { deleteAllPresets } from "../../dal/preset";
 import { deleteAll as deleteAllResults } from "../../dal/result";
 import { deleteConfig } from "../../dal/config";
 import { verify } from "../../utils/captcha";
+import * as LeaderboardsDAL from "../../dal/leaderboards";
+import { purgeUserFromDailyLeaderboards } from "../../utils/daily-leaderboards";
 
 async function verifyCaptcha(captcha: string): Promise<void> {
   if (!(await verify(captcha))) {
@@ -25,7 +27,16 @@ export async function createNewUser(
   const { name, captcha } = req.body;
   const { email, uid } = req.ctx.decodedToken;
 
-  await verifyCaptcha(captcha);
+  try {
+    await verifyCaptcha(captcha);
+  } catch (e) {
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (e) {
+      // user might be deleted on the frontend
+    }
+    throw e;
+  }
 
   if (email.endsWith("@tidal.lol") || email.endsWith("@selfbot.cc")) {
     throw new MonkeyError(400, "Invalid domain");
@@ -48,7 +59,17 @@ export async function deleteUser(
   const { uid } = req.ctx.decodedToken;
 
   const userInfo = await UserDAL.getUser(uid, "delete user");
-  await UserDAL.deleteUser(uid);
+  await Promise.all([
+    UserDAL.deleteUser(uid),
+    deleteAllApeKeys(uid),
+    deleteAllPresets(uid),
+    deleteConfig(uid),
+    purgeUserFromDailyLeaderboards(
+      uid,
+      req.ctx.configuration.dailyLeaderboards
+    ),
+  ]);
+
   Logger.logToDb("user_deleted", `${userInfo.email} ${userInfo.name}`, uid);
 
   return new MonkeyResponse("User deleted");
@@ -66,6 +87,10 @@ export async function resetUser(
     deleteAllPresets(uid),
     deleteAllResults(uid),
     deleteConfig(uid),
+    purgeUserFromDailyLeaderboards(
+      uid,
+      req.ctx.configuration.dailyLeaderboards
+    ),
   ]);
   Logger.logToDb("user_reset", `${userInfo.email} ${userInfo.name}`, uid);
 
@@ -95,6 +120,10 @@ export async function clearPb(
   const { uid } = req.ctx.decodedToken;
 
   await UserDAL.clearPb(uid);
+  await purgeUserFromDailyLeaderboards(
+    uid,
+    req.ctx.configuration.dailyLeaderboards
+  );
   Logger.logToDb("user_cleared_pbs", "", uid);
 
   return new MonkeyResponse("User's PB cleared");
@@ -494,10 +523,44 @@ export async function getProfile(
     return new MonkeyResponse("Profile retrived: banned user", baseProfile);
   }
 
+  const allTime15English = await LeaderboardsDAL.getRank(
+    "time",
+    "15",
+    "english",
+    user.uid
+  );
+
+  const allTime60English = await LeaderboardsDAL.getRank(
+    "time",
+    "60",
+    "english",
+    user.uid
+  );
+
+  const allTime15EnglishRank = allTime15English
+    ? allTime15English.rank
+    : undefined;
+  const allTime60EnglishRank = allTime60English
+    ? allTime60English.rank
+    : undefined;
+
+  const alltimelbs = {
+    time: {
+      "15": {
+        english: allTime15EnglishRank,
+      },
+      "60": {
+        english: allTime60EnglishRank,
+      },
+    },
+  };
+
   const profileData = {
     ...baseProfile,
     inventory,
     details: profileDetails,
+    allTimeLbs: alltimelbs,
+    uid: user.uid,
   };
 
   return new MonkeyResponse("Profile retrieved", profileData);

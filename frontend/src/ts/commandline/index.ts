@@ -2,7 +2,6 @@ import * as ThemeController from "../controllers/theme-controller";
 import Config, * as UpdateConfig from "../config";
 import * as Focus from "../test/focus";
 import * as CommandlineLists from "./commands";
-import * as Misc from "./../utils/misc";
 import * as TestUI from "../test/test-ui";
 import * as DB from "../db";
 import * as Notifications from "../elements/notifications";
@@ -14,7 +13,6 @@ import { Auth } from "../firebase";
 import { isAnyPopupVisible } from "../utils/misc";
 import { update as updateCustomThemesList } from "./lists/custom-themes-list";
 import { update as updateTagsCommands } from "./lists/tags";
-import { update as updateThemesCommands } from "./lists/themes";
 
 let commandLineMouseMode = false;
 let themeChosen = false;
@@ -172,6 +170,8 @@ function updateSuggested(): void {
 
 export let show = (): void => {
   themeChosen = false;
+
+  //take last element of array
   if (!$(".page.pageLoading").hasClass("hidden")) return;
   Focus.set(false);
   $("#commandLine").removeClass("hidden");
@@ -189,9 +189,6 @@ export let show = (): void => {
       );
   }
   $("#commandLine input").val("");
-  Misc.getThemesList().then((themes) => {
-    updateThemesCommands(themes);
-  });
   updateSuggested();
   $("#commandLine input").trigger("focus");
 };
@@ -380,21 +377,11 @@ function restoreOldCommandLine(sshow = true): void {
   if (sshow) show();
 }
 
-$("#commandLine input").keyup((e) => {
+$("#commandLine input").on("input", () => {
   commandLineMouseMode = false;
   $("#commandLineWrapper #commandLine .suggestions .entry").removeClass(
     "activeMouse"
   );
-  if (
-    e.key === "ArrowUp" ||
-    e.key === "ArrowDown" ||
-    e.key === "Enter" ||
-    e.key === "Tab" ||
-    e.code == "AltLeft" ||
-    (e.key.length > 1 && e.key !== "Backspace" && e.key !== "Delete")
-  ) {
-    return;
-  }
   updateSuggested();
 });
 
@@ -475,18 +462,18 @@ $(document).on("mousemove", () => {
   if (!commandLineMouseMode) commandLineMouseMode = true;
 });
 
-$(document).on(
+$("#commandLineWrapper #commandLine").on(
   "mouseenter",
-  "#commandLineWrapper #commandLine .suggestions .entry",
+  ".suggestions .entry",
   (e) => {
     if (!commandLineMouseMode) return;
     $(e.target).addClass("activeMouse");
   }
 );
 
-$(document).on(
+$("#commandLineWrapper #commandLine").on(
   "mouseleave",
-  "#commandLineWrapper #commandLine .suggestions .entry",
+  ".suggestions .entry",
   (e) => {
     if (!commandLineMouseMode) return;
     $(e.target).removeClass("activeMouse");
@@ -519,9 +506,9 @@ $("#commandLineWrapper #commandLine .suggestions").on("mouseover", (e) => {
   } catch (e) {}
 });
 
-$(document).on(
+$("#commandLineWrapper #commandLine").on(
   "click",
-  "#commandLineWrapper #commandLine .suggestions .entry",
+  ".suggestions .entry",
   (e) => {
     themeChosen = true;
     $(".suggestions .entry").removeClass("activeKeyboard");
@@ -694,7 +681,7 @@ $(document).on("keydown", (e) => {
   return;
 });
 
-$(document).on("click", "#commandLineMobileButton", () => {
+$("#commandLineMobileButton").on("click", () => {
   if (Config.singleListCommandLine == "on") {
     useSingleListCommandLine(false);
   } else {
@@ -703,19 +690,19 @@ $(document).on("click", "#commandLineMobileButton", () => {
   show();
 });
 
-$(document).on("click", "#keymap .r5 .keySpace", () => {
+$("#keymap").on("click", ".r5 .keySpace", () => {
   CommandlineLists.setCurrent([CommandlineLists.getList("keymapLayouts")]);
   show();
 });
 
-$(document).on("click", "#testModesNotice .textButton", (event) => {
+$(".pageTest").on("click", "#testModesNotice .textButton", (event) => {
   const attr = $(event.currentTarget).attr(
     "commands"
   ) as CommandlineLists.ListsObjectKeys;
   if (attr === undefined) return;
   const commands = CommandlineLists.getList(attr);
   if (commands !== undefined) {
-    if ($(event.currentTarget).attr("commands") === "commandsTags") {
+    if ($(event.currentTarget).attr("commands") === "tags") {
       updateTagsCommands();
     }
     CommandlineLists.pushCurrent(commands);
@@ -723,11 +710,11 @@ $(document).on("click", "#testModesNotice .textButton", (event) => {
   }
 });
 
-$(document).on("click", "#bottom .leftright .right .current-theme", (e) => {
+$("#bottom").on("click", ".leftright .right .current-theme", (e) => {
   if (e.shiftKey) {
     if (!Config.customTheme) {
-      if (Auth.currentUser !== null) {
-        if (DB.getSnapshot().customThemes.length < 1) {
+      if (Auth?.currentUser) {
+        if ((DB.getSnapshot()?.customThemes.length ?? 0) < 1) {
           Notifications.add("No custom themes!", 0);
           UpdateConfig.setCustomTheme(false);
           // UpdateConfig.setCustomThemeId("");

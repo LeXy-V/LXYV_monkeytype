@@ -17,13 +17,13 @@ const commands: MonkeyTypes.Command[] = [
     subgroup,
     beforeSubgroup: (): void => update(),
     available: (): boolean => {
-      return Auth.currentUser !== null;
+      return !!Auth?.currentUser;
     },
   },
 ];
 
 export function update(): void {
-  if (Auth.currentUser === null) {
+  if (!Auth?.currentUser) {
     return;
   }
 
@@ -33,10 +33,10 @@ export function update(): void {
 
   if (!snapshot) return;
 
-  if (DB.getSnapshot().customThemes.length === 0) {
+  if (DB.getSnapshot()?.customThemes.length === 0) {
     return;
   }
-  DB.getSnapshot().customThemes.forEach((theme) => {
+  DB.getSnapshot()?.customThemes.forEach((theme) => {
     subgroup.list.push({
       id: "setCustomThemeId" + theme._id,
       display: theme.name,

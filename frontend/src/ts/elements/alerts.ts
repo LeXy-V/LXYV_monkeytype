@@ -6,6 +6,7 @@ import * as DB from "../db";
 import * as NotificationEvent from "../observables/notification-event";
 import * as BadgeController from "../controllers/badge-controller";
 import * as Notifications from "../elements/notifications";
+import * as ConnectionState from "../states/connection";
 
 let accountAlerts: MonkeyTypes.MonkeyMail[] = [];
 let maxMail = 0;
@@ -89,7 +90,7 @@ export function hide(): void {
               );
             }
             if (totalXpClaimed > 0) {
-              const snapxp = DB.getSnapshot().xp;
+              const snapxp = DB.getSnapshot()?.xp ?? 0;
               AccountButton.updateXpBar(snapxp, totalXpClaimed);
               DB.addXp(totalXpClaimed);
             }
@@ -110,7 +111,7 @@ export async function show(): Promise<void> {
       "easeOutCubic"
     );
 
-    if (Auth.currentUser) {
+    if (Auth?.currentUser) {
       $("#alertsPopup .accountAlerts").removeClass("hidden");
       $("#alertsPopup .separator.accountSeparator").removeClass("hidden");
       $("#alertsPopup .accountAlerts .list").html(`
@@ -134,7 +135,7 @@ export async function show(): Promise<void> {
         },
         100,
         () => {
-          if (Auth.currentUser) {
+          if (Auth?.currentUser) {
             getAccountAlerts();
           }
         }
@@ -143,21 +144,30 @@ export async function show(): Promise<void> {
 }
 
 async function getAccountAlerts(): Promise<void> {
-  const inboxResponse = await Ape.users.getInbox();
-
   $("#alertsPopup .accountAlerts .list").empty();
+
+  if (!ConnectionState.get()) {
+    $("#alertsPopup .accountAlerts .list").html(`
+    <div class="nothing">
+    You are offline
+    </div>
+    `);
+    return;
+  }
+
+  const inboxResponse = await Ape.users.getInbox();
 
   if (inboxResponse.status === 503) {
     $("#alertsPopup .accountAlerts .list").html(`
     <div class="nothing">
-    Account inboxes are temporarily unavailable.
+    Account inboxes are temporarily unavailable
     </div>
     `);
     return;
   } else if (inboxResponse.status !== 200) {
     $("#alertsPopup .accountAlerts .list").html(`
     <div class="nothing">
-    Error getting inbox: ${inboxResponse.message} Please try again later.
+    Error getting inbox: ${inboxResponse.message} Please try again later
     </div>
     `);
     return;
@@ -352,7 +362,7 @@ function updateClaimDeleteAllButton(): void {
   if (accountAlerts.length > 0) {
     let rewardsCount = 0;
     for (const ie of accountAlerts) {
-      if (ie.read === false) {
+      if (ie.read === false && !mailToMarkRead.includes(ie.id)) {
         rewardsCount += ie.rewards.length;
       }
     }
@@ -363,17 +373,24 @@ function updateClaimDeleteAllButton(): void {
       deleteAllButton.removeClass("hidden");
     }
   }
+  if (mailToDelete.length === accountAlerts.length) {
+    deleteAllButton.addClass("hidden");
+  }
 }
 
 $("#alertsPopup .accountAlerts").on("click", ".claimAll", () => {
   for (const ie of accountAlerts) {
-    markReadAlert(ie.id);
+    if (ie.read === false && !mailToMarkRead.includes(ie.id)) {
+      markReadAlert(ie.id);
+    }
   }
 });
 
 $("#alertsPopup .accountAlerts").on("click", ".deleteAll", () => {
   for (const ie of accountAlerts) {
-    deleteAlert(ie.id);
+    if (!mailToDelete.includes(ie.id)) {
+      deleteAlert(ie.id);
+    }
   }
 });
 

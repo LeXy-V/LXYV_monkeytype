@@ -9,6 +9,7 @@ import {
   incrementAuth,
   recordAuthTime,
   recordRequestCountry,
+  // recordRequestForUid,
 } from "../utils/prometheus";
 import { performance } from "perf_hooks";
 
@@ -94,6 +95,10 @@ function authenticateRequest(authOptions = DEFAULT_OPTIONS): Handler {
       recordRequestCountry(country, req as MonkeyTypes.Request);
     }
 
+    // if (req.method !== "OPTIONS" && req?.ctx?.decodedToken?.uid) {
+    //   recordRequestForUid(req.ctx.decodedToken.uid);
+    // }
+
     next();
   };
 }
@@ -144,7 +149,7 @@ async function authenticateWithBearerToken(
   options: RequestAuthenticationOptions
 ): Promise<MonkeyTypes.DecodedToken> {
   try {
-    const decodedToken = await verifyIdToken(token);
+    const decodedToken = await verifyIdToken(token, options.requireFreshToken);
 
     if (options.requireFreshToken) {
       const now = Date.now();
